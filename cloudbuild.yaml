@@ -1,12 +1,12 @@
 steps:
   # Build the Docker image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/${_GCP_PROJECT_ID}/${_CLOUD_RUN_SERVICE_NAME}:${_COMMIT_SHA}', '.']
+    args: ['build', '-t', 'gcr.io/${_GCP_PROJECT_ID}/backend:${_COMMIT_SHA}', '.']
     id: Build
 
   # Push the Docker image to Google Container Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/${_GCP_PROJECT_ID}/${_CLOUD_RUN_SERVICE_NAME}:${_COMMIT_SHA}']
+    args: ['push', 'gcr.io/${_GCP_PROJECT_ID}/backend:${_COMMIT_SHA}']
     id: Push
 
   # Deploy to Cloud Run
@@ -15,25 +15,23 @@ steps:
       - gcloud
       - run
       - deploy
-      - ${_CLOUD_RUN_SERVICE_NAME}
-      - --image=gcr.io/${_GCP_PROJECT_ID}/${_CLOUD_RUN_SERVICE_NAME}:${_COMMIT_SHA}
-      - --region=${_GCP_REGION}
+      - backend
+      - --image=gcr.io/${_GCP_PROJECT_ID}/backend:${_COMMIT_SHA}
+      - --region=us
       - --platform=managed
-      - --allow-unauthenticated # Optional: if you want the service to be publicly accessible
-      - --port=4000 # Specify the port your application listens on
+      - --allow-unauthenticated # Jika ingin publik
+      - --port=4000
     id: Deploy
     env:
-      - 'PORT=4000' # Ensure the application knows which port to listen on
+      - 'PORT=4000'
 
 options:
   logging: CLOUD_LOGGING_ONLY
   defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
 
 images:
-  - 'gcr.io/${_GCP_PROJECT_ID}/${_CLOUD_RUN_SERVICE_NAME}:${_COMMIT_SHA}'
+  - 'gcr.io/${_GCP_PROJECT_ID}/backend:${_COMMIT_SHA}'
 
 substitutions:
   _GCP_PROJECT_ID: 'g-04-450802'
-  _CLOUD_RUN_SERVICE_NAME: 'backend'
-  _GCP_REGION: 'asia-southeast1' 
   _COMMIT_SHA: 'v2'
