@@ -1,0 +1,134 @@
+# @name getAllProducts
+GET http://localhost:4000/products
+Content-Type: application/json
+
+###
+
+# @name getProductById
+GET http://localhost:4000/products/1
+Content-Type: application/json
+
+###
+
+# @name createProduct
+POST http://localhost:4000/add-product
+Content-Type: application/json
+
+{
+"nama": "Buket Romantic Pink",
+  "deskripsi": "Rangkaian mawar pink dengan baby's breath",
+  "harga": 250000,
+  "kategori": "Fresh Flower",
+  "image_url": "https://i.pinimg.com/originals/c3/31/82/c33182f2579959d1db03f97d67a43308.jpg"
+}
+
+###
+
+# @name updateProduct
+PUT http://localhost:4000/edit-product/1
+Content-Type: application/json
+
+{
+  "nama": "Produk Updated",
+  "deskripsi": "Deskripsi produk yang diupdate",
+  "harga": 250000.50,
+  "kategori": "Fresh Flower"
+}
+
+###
+
+# @name deleteProduct
+DELETE http://localhost:4000/delete-product/1
+Content-Type: application/json
+
+### Transaksi Endpoints
+
+### [1] Buat Transaksi Baru
+# @name createTransaksi
+POST http://localhost:4000/api/transaksi
+Content-Type: application/json
+
+{
+  "id_user": 1,
+  "id_produk": 1,
+  "jumlah": 2,
+  "total_harga": 500000,
+  "metode_pembayaran": "transfer_bca",
+  "alamat_pengiriman": "Jl. Anggrek No. 10, Jakarta",
+  "status": "pending"
+}
+
+### [2] Ambil Semua Transaksi
+# @name getAllTransaksi
+GET http://localhost:4000/api/transaksi
+Content-Type: application/json
+
+### [3] Ambil Transaksi by ID
+# @name getTransaksiById
+GET http://localhost:4000/api/transaksi/1
+Content-Type: application/json
+
+### [4] Update Status Transaksi
+# @name updateTransaksi
+PUT http://localhost:4000/api/transaksi/1
+Content-Type: application/json
+
+{
+  "status": "dikirim",
+  "tracking_link": "https://tracking.jne.co.id/ABC123",
+  "waktu_pengiriman": "2023-11-15 10:00:00"
+}
+
+### [5] Hapus Transaksi
+# @name deleteTransaksi
+DELETE http://localhost:4000/api/transaksi/1
+Content-Type: application/json
+
+
+### Register User
+# @name register
+POST http://localhost:4000/auth/register
+Content-Type: application/json
+
+{
+  "nama": "admin",
+  "email": "admin@admin.com",
+  "password": "admmin123",
+  "alamat": "Jl. Contoh No. 123"
+}
+
+### Login User
+# @name login
+POST http://localhost:4000/auth/login
+Content-Type: application/json
+
+{
+  "email": "oscar@oscar.com",
+  "password": "oscar123"
+}
+
+### Get All Users
+# @name getAllUsers
+GET http://localhost:4000/auth/users
+Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywiaXNfYWRtaW4iOmZhbHNlLCJpYXQiOjE3NDkwNTQ3NDEsImV4cCI6MTc0OTE0MTE0MX0.760F8RobqSVxFB1Q_bOv85rXs47DPWHIhoYtUIFtXp8
+
+### Get User by ID
+# @name getUserById
+GET http://localhost:4000/auth/users/1
+Authorization: Bearer your_jwt_token_here
+
+### Update User
+# @name updateUser
+PUT http://localhost:4000/auth/users/1
+Content-Type: application/json
+Authorization: Bearer your_jwt_token_here
+
+{
+  "alamat": "Jl. Baru No. 456",
+  "foto_profil": "https://example.com/profiles/john.jpg"
+}
+
+### Delete User
+# @name deleteUser
+DELETE http://localhost:4000/auth/users/1
+Authorization: Bearer your_jwt_token_here

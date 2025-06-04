@@ -1,0 +1,38 @@
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/${_GCP_PROJECT_ID}/${_CLOUD_RUN_SERVICE_NAME}:${_COMMIT_SHA}', '.']
+    id: Build
+
+  # Push the Docker image to Google Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/${_GCP_PROJECT_ID}/${_CLOUD_RUN_SERVICE_NAME}:${_COMMIT_SHA}']
+    id: Push
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdk/cloud-sdk'
+    args:
+      - gcloud
+      - run
+      - deploy
+      - ${_CLOUD_RUN_SERVICE_NAME}
+      - --image=gcr.io/${_GCP_PROJECT_ID}/${_CLOUD_RUN_SERVICE_NAME}:${_COMMIT_SHA}
+      - --region=${_GCP_REGION}
+      - --platform=managed
+      - --allow-unauthenticated # Optional: if you want the service to be publicly accessible
+      - --port=4000 # Specify the port your application listens on
+    id: Deploy
+    env:
+      - 'PORT=4000' # Ensure the application knows which port to listen on
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
+
+images:
+  - 'gcr.io/${_GCP_PROJECT_ID}/${_CLOUD_RUN_SERVICE_NAME}:${_COMMIT_SHA}'
+
+substitutions:
+  _GCP_PROJECT_ID: 'your-gcp-project-id'
+  _CLOUD_RUN_SERVICE_NAME: 'your-cloud-run-service-name'
+  _GCP_REGION: 'your-gcp-region' 
