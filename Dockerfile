@@ -13,9 +13,6 @@ RUN npm install
 # Salin sisa kode aplikasi ke dalam container
 COPY . .
 
-# Copy .env ke image
-COPY .env .env
-
 
 # Expose port yang digunakan aplikasi Anda (berdasarkan index.js, yaitu 4000)
 EXPOSE 4000
