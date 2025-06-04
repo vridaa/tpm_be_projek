@@ -33,6 +33,6 @@ images:
   - 'gcr.io/${_GCP_PROJECT_ID}/${_CLOUD_RUN_SERVICE_NAME}:${_COMMIT_SHA}'
 
 substitutions:
-  _GCP_PROJECT_ID: 'your-gcp-project-id'
-  _CLOUD_RUN_SERVICE_NAME: 'your-cloud-run-service-name'
-  _GCP_REGION: 'your-gcp-region' 
+  _GCP_PROJECT_ID: 'g-04-450802'
+  _CLOUD_RUN_SERVICE_NAME: 'backend'
+  _GCP_REGION: 'asia-southeast1' 
