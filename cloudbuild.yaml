@@ -36,3 +36,4 @@ substitutions:
   _GCP_PROJECT_ID: 'g-04-450802'
   _CLOUD_RUN_SERVICE_NAME: 'backend'
   _GCP_REGION: 'asia-southeast1' 
+  _COMMIT_SHA: 'v2'
