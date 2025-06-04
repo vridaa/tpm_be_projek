@@ -16,7 +16,7 @@ steps:
       - 'deploy'
       - 'backend'
       - '--image=gcr.io/${_GCP_PROJECT_ID}/backend:${_COMMIT_SHA}'
-      - '--region=us-central1'  # Iowa region
+      - '--region=europe-west1'  # Iowa region
       - '--platform=managed'
       - '--allow-unauthenticated' # Public access
       - '--port=4000'
