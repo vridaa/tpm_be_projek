@@ -16,12 +16,21 @@ export const registerUser = async (req, res) => {
       alamat
     });
 
+    // Generate JWT token after successful registration
+    const token = jwt.sign(
+      { id: user.id, is_admin: user.is_admin },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
     res.status(201).json({
       message: "User berhasil dibuat",
-      data: {
+      token,
+      user: {
         id: user.id,
         nama: user.nama,
-        email: user.email
+        email: user.email,
+        is_admin: user.is_admin
       }
     });
   } catch (error) {

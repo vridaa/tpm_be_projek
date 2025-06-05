@@ -37,6 +37,10 @@ const User = db.define('users', {
   created_at: {
     type: DataTypes.DATE,
     defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+  },
+  updated_at: {
+    type: DataTypes.DATE,
+    defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
   }
 }, {
   tableName: 'user',
