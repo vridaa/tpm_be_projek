@@ -98,8 +98,8 @@ Content-Type: application/json
 # }
 
 {
-  "nama": "ayam",
-  "email": "a@admin.com",
+  "nama": "ayam2",
+  "email": "ayam2@ayam.com",
   "password": "ayam123",
   "alamat": "Jl. Contoh No. 123"
 }

@@ -8,6 +8,7 @@ import {
   deleteUser
 } from "../controller/userController.js";
 import { verifyToken } from "../middleware/AuthMiddleware.js";
+import { uploadImage } from "../middleware/UploadMiddleware.js";
 
 const router = express.Router();
 
@@ -18,7 +19,7 @@ router.post('/login', loginUser);
 // User CRUD Routes
 router.get('/users', verifyToken, getAllUsers);
 router.get('/users/:id', verifyToken, getUserById);
-router.put('/users/:id', verifyToken, updateUser);
+router.put('/users/:id', verifyToken, uploadImage('foto_profil'), updateUser);
 router.delete('/users/:id', verifyToken, deleteUser);
 
 export default router;
