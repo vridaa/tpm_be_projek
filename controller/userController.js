@@ -1,174 +1,169 @@
-import User from "../models/UserModel.js";
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import fs from 'fs';
-import path from 'path';
+import { User, Transaksi } from '../models/index.js'; // Ensure Transaksi is imported if needed here
+import { Storage } from '@google-cloud/storage';
+
+const storage = new Storage({
+    projectId: process.env.GCS_PROJECT_ID,
+    keyFilename: process.env.GCS_KEY_FILE_NAME,
+});
+const bucket = storage.bucket(process.env.GCS_BUCKET_NAME);
 
 // Register User
 export const registerUser = async (req, res) => {
-  try {
-    const { nama, email, password, alamat } = req.body;
+    try {
+        const { username, email, password } = req.body;
 
-    // Validasi minimal
-    if (!nama || !email || !password) {
-      return res.status(400).json({ message: "Nama, email, dan password wajib diisi" });
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = await User.create({
+            username,
+            email,
+            password: hashedPassword,
+        });
+
+        // Generate JWT token upon successful registration
+        const token = jwt.sign(
+            { id: newUser.id, email: newUser.email },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' }
+        );
+
+        res.status(201).json({
+            message: 'User registered successfully',
+            user: {
+                id: newUser.id,
+                username: newUser.username,
+                email: newUser.email,
+            },
+            token, // Include token in the response
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
     }
-
-    const existingUser = await User.findOne({ where: { email } });
-    if (existingUser) {
-      return res.status(400).json({ message: "Email sudah digunakan" });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await User.create({
-      nama,
-      email,
-      password_hash: hashedPassword,
-      alamat
-    });
-
-    const token = jwt.sign(
-      { id: user.id, is_admin: user.is_admin },
-      process.env.JWT_SECRET,
-      { expiresIn: '1d' }
-    );
-
-    res.status(201).json({
-      message: "User berhasil dibuat",
-      token,
-      user: {
-        id: user.id,
-        nama: user.nama,
-        email: user.email,
-        is_admin: user.is_admin
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
 };
 
 // Login User
 export const loginUser = async (req, res) => {
-  try {
-    const { email, password } = req.body;
+    try {
+        const { email, password } = req.body;
 
-    const user = await User.findOne({ where: { email } });
-    if (!user) {
-      return res.status(404).json({ message: "User tidak ditemukan" });
+        const user = await User.findOne({ where: { email } });
+        if (!user) {
+            return res.status(400).json({ message: 'Invalid credentials' });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Invalid credentials' });
+        }
+
+        const token = jwt.sign(
+            { id: user.id, email: user.email },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' }
+        );
+
+        res.status(200).json({ message: 'Login successful', token });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
     }
-
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Password salah" });
-    }
-
-    const token = jwt.sign(
-      { id: user.id, is_admin: user.is_admin },
-      process.env.JWT_SECRET,
-      { expiresIn: '1d' }
-    );
-
-    res.status(200).json({
-      message: "Login berhasil",
-      token,
-      user: {
-        id: user.id,
-        nama: user.nama,
-        email: user.email,
-        is_admin: user.is_admin
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
 };
 
 // Get All Users
 export const getAllUsers = async (req, res) => {
-  try {
-    const users = await User.findAll({
-      attributes: ['id', 'nama', 'email', 'alamat', 'is_admin']
-    });
-    res.status(200).json(users);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+    try {
+        const users = await User.findAll({
+            attributes: { exclude: ['password'] },
+        });
+        res.status(200).json(users);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
 };
 
 // Get User by ID
 export const getUserById = async (req, res) => {
-  try {
-    const user = await User.findByPk(req.params.id, {
-      attributes: ['id', 'nama', 'email', 'alamat', 'foto_profil', 'is_admin']
-    });
-    if (!user) {
-      return res.status(404).json({ message: "User tidak ditemukan" });
+    try {
+        const { id } = req.params;
+        const user = await User.findByPk(id, {
+            attributes: { exclude: ['password'] },
+        });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        res.status(200).json(user);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
     }
-    res.status(200).json(user);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
 };
 
 // Update User
 export const updateUser = async (req, res) => {
-  try {
-    const user = await User.findByPk(req.params.id);
-    if (!user) return res.status(404).json({ message: "User tidak ditemukan" });
+    try {
+        const { id } = req.params;
+        const { username, email, password } = req.body;
+        const user = await User.findByPk(id);
 
-    const { nama, email, alamat, password } = req.body;
-    let password_hash = user.password_hash;
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
 
-    if (password) {
-      password_hash = await bcrypt.hash(password, 10);
+        if (username) user.username = username;
+        if (email) user.email = email;
+        if (password) user.password = await bcrypt.hash(password, 10);
+
+        if (req.file) {
+            const blob = bucket.file(Date.now() + '-' + req.file.originalname);
+            const blobStream = blob.createWriteStream({
+                resumable: false,
+                metadata: {
+                    contentType: req.file.mimetype
+                }
+            });
+
+            blobStream.on('error', err => {
+                console.error('Error uploading to GCS:', err);
+                return res.status(500).json({ message: 'Failed to upload image' });
+            });
+
+            blobStream.on('finish', async () => {
+                const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+                user.profile_image_url = publicUrl; // Assuming you have a field for profile image URL
+                await user.save();
+                res.status(200).json({ message: 'User updated successfully', user });
+            });
+
+            blobStream.end(req.file.buffer);
+        } else {
+            await user.save();
+            res.status(200).json({ message: 'User updated successfully', user });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
     }
-
-    // Gunakan foto_profil dari req.body yang disediakan oleh UploadMiddleware
-    let foto_profil = user.foto_profil;
-    if (req.body.foto_profil) {
-      foto_profil = req.body.foto_profil;
-    }
-
-    await user.update({
-      nama: nama || user.nama,
-      email: email || user.email,
-      alamat: alamat || user.alamat,
-      password_hash,
-      foto_profil
-    });
-
-    res.status(200).json({
-      message: "User berhasil diupdate",
-      data: {
-        id: user.id,
-        nama: user.nama,
-        email: user.email,
-        alamat: user.alamat,
-        foto_profil: user.foto_profil
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
 };
 
 // Delete User
 export const deleteUser = async (req, res) => {
-  try {
-    const user = await User.findByPk(req.params.id);
-    if (!user) return res.status(404).json({ message: "User tidak ditemukan" });
+    try {
+        const { id } = req.params;
+        const user = await User.findByPk(id);
 
-    // Logika penghapusan foto profil dari GCS belum diimplementasikan di sini.
-    // Untuk menghapus dari GCS, Anda perlu memanggil fungsi dari UploadMiddleware.
-    // Untuk saat ini, kita hanya menghapus data user dari database.
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
 
-    await User.destroy({ where: { id: req.params.id } });
-    res.status(200).json({ message: "User berhasil dihapus" });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+        await user.destroy();
+        res.status(200).json({ message: 'User deleted successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
 };
 
 export default {
