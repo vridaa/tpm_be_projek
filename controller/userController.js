@@ -1,14 +1,26 @@
 import User from "../models/UserModel.js";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import fs from 'fs';
+import path from 'path';
 
 // Register User
 export const registerUser = async (req, res) => {
   try {
     const { nama, email, password, alamat } = req.body;
-    
+
+    // Validasi minimal
+    if (!nama || !email || !password) {
+      return res.status(400).json({ message: "Nama, email, dan password wajib diisi" });
+    }
+
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email sudah digunakan" });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    
+
     const user = await User.create({
       nama,
       email,
@@ -16,7 +28,6 @@ export const registerUser = async (req, res) => {
       alamat
     });
 
-    // Generate JWT token after successful registration
     const token = jwt.sign(
       { id: user.id, is_admin: user.is_admin },
       process.env.JWT_SECRET,
@@ -42,7 +53,7 @@ export const registerUser = async (req, res) => {
 export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
-    
+
     const user = await User.findOne({ where: { email } });
     if (!user) {
       return res.status(404).json({ message: "User tidak ditemukan" });
@@ -101,22 +112,51 @@ export const getUserById = async (req, res) => {
   }
 };
 
-// Update User
+// Update User (support multipart form-data dan password hashing)
 export const updateUser = async (req, res) => {
   try {
-    const [updated] = await User.update(req.body, {
-      where: { id: req.params.id }
-    });
-    if (updated) {
-      const updatedUser = await User.findByPk(req.params.id, {
-        attributes: ['id', 'nama', 'email', 'alamat', 'foto_profil']
-      });
-      return res.status(200).json({
-        message: "User berhasil diupdate",
-        data: updatedUser
-      });
+    const user = await User.findByPk(req.params.id);
+    if (!user) return res.status(404).json({ message: "User tidak ditemukan" });
+
+    const { nama, email, alamat, password } = req.body;
+    let password_hash = user.password_hash;
+
+    // Update password jika diberikan
+    if (password) {
+      password_hash = await bcrypt.hash(password, 10);
     }
-    res.status(404).json({ message: "User tidak ditemukan" });
+
+    // Update foto profil jika diberikan
+    let foto_profil = user.foto_profil;
+    if (req.file) {
+      // Hapus file lama (jika ada)
+      if (foto_profil) {
+        const oldPath = path.join("public/images", foto_profil);
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+      }
+      foto_profil = req.file.filename;
+    }
+
+    await user.update({
+      nama: nama || user.nama,
+      email: email || user.email,
+      alamat: alamat || user.alamat,
+      password_hash,
+      foto_profil
+    });
+
+    res.status(200).json({
+      message: "User berhasil diupdate",
+      data: {
+        id: user.id,
+        nama: user.nama,
+        email: user.email,
+        alamat: user.alamat,
+        foto_profil: user.foto_profil
+      }
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -125,13 +165,19 @@ export const updateUser = async (req, res) => {
 // Delete User
 export const deleteUser = async (req, res) => {
   try {
-    const deleted = await User.destroy({
-      where: { id: req.params.id }
-    });
-    if (deleted) {
-      return res.status(200).json({ message: "User berhasil dihapus" });
+    const user = await User.findByPk(req.params.id);
+    if (!user) return res.status(404).json({ message: "User tidak ditemukan" });
+
+    // Hapus foto profil jika ada
+    if (user.foto_profil) {
+      const pathToDelete = path.join("public/images", user.foto_profil);
+      if (fs.existsSync(pathToDelete)) {
+        fs.unlinkSync(pathToDelete);
+      }
     }
-    res.status(404).json({ message: "User tidak ditemukan" });
+
+    await User.destroy({ where: { id: req.params.id } });
+    res.status(200).json({ message: "User berhasil dihapus" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

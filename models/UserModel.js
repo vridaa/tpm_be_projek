@@ -1,4 +1,5 @@
 import { Sequelize } from "sequelize";
+import bcrypt from "bcrypt"; // pastikan bcrypt di-import
 import db from "../config/database.js";
 
 const { DataTypes } = Sequelize;
@@ -45,21 +46,23 @@ const User = db.define('users', {
 }, {
   tableName: 'user',
   timestamps: false,
+  freezeTableName: true,
   hooks: {
     beforeCreate: async (user) => {
       if (user.password) {
         const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(user.password, salt);
+        user.password_hash = await bcrypt.hash(user.password, salt); // hash ke password_hash
       }
     }
-  },
-  freezeTableName: true
+  }
 });
 
+// Menambahkan field virtual 'password' (tidak disimpan di DB)
+User.prototype.password = null;
 
-// Memvalidasi password
-User.prototype.validatePassword = async function(password) {
-  return await bcrypt.compare(password, this.password);
+// Method untuk validasi password login
+User.prototype.validatePassword = async function (password) {
+  return await bcrypt.compare(password, this.password_hash);
 };
 
 export default User;
