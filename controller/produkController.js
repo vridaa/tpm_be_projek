@@ -1,5 +1,5 @@
-// Import model Product
 import Products from "../models/produkModel.js";
+import { getDefaultImageUrl } from "../middleware/UploadMiddleware.js";
 
 // GET: Ambil semua produk
 async function getProducts(req, res) {
@@ -7,45 +7,91 @@ async function getProducts(req, res) {
         const result = await Products.findAll();
         res.status(200).json(result);
     } catch (error) {
-        console.log(error.message);
-        res.status(500).json({ message: "Server error" });
+        console.error("Error getting products:", error.message);
+        res.status(500).json({ 
+            success: false,
+            message: "Gagal mengambil data produk" 
+        });
     }
 }
 
-// POST: Tambah produk baru
+// POST: Tambah produk baru dengan upload gambar
 async function createProduct(req, res) {
     try {
-        const inputResult = req.body;
-        const newProduct = await Products.create(inputResult);
-        res.status(201).json(newProduct);
+        const { name, price, description } = req.body;
+        
+        // Dapatkan URL gambar dari middleware atau gunakan default
+        const image_url = req.body.buketImage || getDefaultImageUrl();
+        
+        // Validasi input
+        if (!name || !price) {
+            return res.status(400).json({
+                success: false,
+                message: "Nama dan harga produk wajib diisi"
+            });
+        }
+
+        const newProduct = await Products.create({
+            name,
+            price: parseFloat(price),
+            description: description || null,
+            image_url
+        });
+
+        res.status(201).json({
+            success: true,
+            data: newProduct,
+            message: "Produk berhasil ditambahkan"
+        });
     } catch (error) {
-        console.log(error.message);
-        res.status(500).json({ message: "Server error" });
+        console.error("Error creating product:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Gagal menambahkan produk"
+        });
     }
 }
 
 // PUT/PATCH: Update produk berdasarkan ID
 async function updateProduct(req, res) {
-    console.log("Received Body:", req.body); // Debugging
+    try {
+        const { id } = req.params;
+        const { name, price, description } = req.body;
+        
+        // Dapatkan produk yang akan diupdate
+        const product = await Products.findByPk(id);
+        
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: "Produk tidak ditemukan"
+            });
+        }
 
-    if (Object.keys(req.body).length === 0) {
-        return res.status(400).json({ message: "Request body cannot be empty" });
+        // Update data produk
+        product.name = name || product.name;
+        product.price = price ? parseFloat(price) : product.price;
+        product.description = description || product.description;
+        
+        // Jika ada gambar baru diupload
+        if (req.body.buketImage) {
+            product.image_url = req.body.buketImage;
+        }
+
+        await product.save();
+
+        res.status(200).json({
+            success: true,
+            data: product,
+            message: "Produk berhasil diupdate"
+        });
+    } catch (error) {
+        console.error("Error updating product:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Gagal mengupdate produk"
+        });
     }
-
-    const { id } = req.params;
-    const product = await Products.findByPk(id);
-
-    if (!product) {
-        return res.status(404).json({ message: "Product not found" });
-    }
-
-    product.set(req.body);
-    await product.save();
-
-    return res.status(200).json({
-        message: "Product updated successfully",
-        data: product
-    });
 }
 
 // DELETE: Hapus produk berdasarkan ID
@@ -55,14 +101,24 @@ async function deleteProduct(req, res) {
         const product = await Products.findByPk(id);
 
         if (!product) {
-            return res.status(404).json({ message: "Product not found" });
+            return res.status(404).json({
+                success: false,
+                message: "Produk tidak ditemukan"
+            });
         }
 
         await Products.destroy({ where: { id } });
-        res.status(200).json({ message: "Product deleted successfully" });
+        
+        res.status(200).json({
+            success: true,
+            message: "Produk berhasil dihapus"
+        });
     } catch (error) {
-        console.log(error.message);
-        res.status(500).json({ message: "Server error" });
+        console.error("Error deleting product:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Gagal menghapus produk"
+        });
     }
 }
 
@@ -71,17 +127,27 @@ async function getProductById(req, res) {
     try {
         const { id } = req.params;
         const product = await Products.findByPk(id);
+        
         if (!product) {
-            return res.status(404).json({ message: "Product not found" });
+            return res.status(404).json({
+                success: false,
+                message: "Produk tidak ditemukan"
+            });
         }
-        res.status(200).json(product);
+        
+        res.status(200).json({
+            success: true,
+            data: product
+        });
     } catch (error) {
-        console.log(error.message);
-        res.status(500).json({ message: "Server error" });
+        console.error("Error getting product:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Gagal mengambil detail produk"
+        });
     }
 }
 
-// Export semua fungsi
 export {
     getProducts,
     createProduct,

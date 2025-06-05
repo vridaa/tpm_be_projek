@@ -12,10 +12,24 @@ import { uploadImage } from "../middleware/UploadMiddleware.js";
 const router = express.Router();
 
 // Rute untuk produk
-router.get("/products", verifyToken, getProducts);              // Ambil semua produk
-router.get("/products/:id", verifyToken, getProductById);       // Ambil satu produk berdasarkan ID
-router.post("/add-product", verifyToken, uploadImage('image_url'), createProduct);        // Tambah produk baru dengan upload gambar
-router.put("/edit-product/:id", verifyToken, uploadImage('image_url'), updateProduct);    // Edit/update produk dengan upload gambar
-router.delete("/delete-product/:id", verifyToken, deleteProduct); // Hapus produk
+router.get("/products", verifyToken, getProducts);
+router.get("/products/:id", verifyToken, getProductById);
+
+// Gunakan 'buketImage' sebagai tipe upload
+router.post(
+  "/products",
+  verifyToken, 
+  uploadImage('buketImage'), // Menggunakan konfigurasi buketImage
+  createProduct
+);
+
+router.put(
+  "/products/:id",
+  verifyToken,
+  uploadImage('buketImage'), // Menggunakan konfigurasi buketImage
+  updateProduct
+);
+
+router.delete("/products/:id", verifyToken, deleteProduct);
 
 export default router;

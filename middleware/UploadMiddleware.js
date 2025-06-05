@@ -8,149 +8,145 @@
 // 3. Upload ke Google Cloud Storage
 // 4. Generate URL publik untuk akses file
 
-// Import library yang dibutuhkan
 import multer from 'multer';
 import { Storage } from '@google-cloud/storage';
 import dotenv from 'dotenv';
 
-dotenv.config(); // Ensure dotenv is configured to load environment variables
+dotenv.config();
 
-// === Tahap 1: Konfigurasi Google Cloud Storage ===
-// Inisialisasi koneksi ke Google Cloud Storage
+// ==================== KONFIGURASI GCS ====================
 const storage = new Storage({
   projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
-  keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS // Opsional: jika menggunakan service account key file di lokal
+  keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS
 });
 
-// Pilih bucket yang akan digunakan
 const bucket = storage.bucket(process.env.GCS_BUCKET_NAME);
 
-// === Tahap 2: Konfigurasi Multer ===
-// Setup penyimpanan file sementara di memory
+// ==================== KONFIGURASI MULTER ====================
 const multerStorage = multer.memoryStorage();
-const upload = multer({ storage: multerStorage });
 
-// Filter untuk memastikan hanya file gambar yang diterima
 const multerFilter = (req, file, cb) => {
   if (file.mimetype.startsWith('image')) {
     cb(null, true);
   } else {
-    cb(new Error('File bukan gambar! Silakan upload gambar.'), false);
+    cb(new Error('Hanya file gambar yang diperbolehkan!'), false);
   }
 };
 
-// Konfigurasi upload untuk berbagai jenis file
-// Setiap konfigurasi:
-// - Menggunakan memory storage
-// - Memiliki filter tipe file
-// - Batasan ukuran 5MB
+// Konfigurasi untuk berbagai jenis upload
 const uploadConfig = {
-  // Upload foto profil
   profilePicture: multer({
     storage: multerStorage,
     fileFilter: multerFilter,
-    limits: { fileSize: 5 * 1024 * 1024 }  // 5MB
+    limits: { fileSize: 5 * 1024 * 1024 }
   }).single('profilePicture'),
   
-  // Upload foto candi
   buketImage: multer({
     storage: multerStorage,
     fileFilter: multerFilter,
-    limits: { fileSize: 5 * 1024 * 1024 }  // 5MB
+    limits: { fileSize: 5 * 1024 * 1024 }
   }).single('image'),
 };
 
-// === Tahap 3: Helper Functions ===
-// Mendapatkan URL gambar default jika tidak ada upload
+// ==================== HELPER FUNCTIONS ====================
 const getDefaultImageUrl = () => {
-  return `https://storage.googleapis.com/${process.env.GOOGLE_CLOUD_STORAGE_BUCKET}/assets/image-placeholder.jpg`;
+  return `https://storage.googleapis.com/${process.env.GCS_BUCKET_NAME}/assets/image-placeholder.jpg`;
 };
 
-// Menghapus file dari Google Cloud Storage
 const deleteFileFromGCS = async (filename) => {
   try {
     await bucket.file(filename).delete();
     return true;
   } catch (error) {
-    console.error('Error deleting file from GCS:', error);
+    console.error('Gagal menghapus file dari GCS:', error);
     return false;
   }
 };
 
-// Generate nama file berdasarkan tipe dan ID
-const getFilename = (type, id) => {
-  const extension = '.jpg';
+const generateFilename = (type, id) => {
+  const ext = req.file.originalname.split('.').pop();
   switch (type) {
     case 'profilePicture':
-      return `assets/profilepicture/pp-${id}${extension}`;
+      return `profile_pictures/user_${id}_${Date.now()}.${ext}`;
     case 'buketImage':
-      return `assets/buketimage/buket-${id}${extension}`;
+      return `buket_images/buket_${id}_${Date.now()}.${ext}`;
     default:
-      throw new Error('Invalid file type');
+      throw new Error('Tipe upload tidak valid');
   }
 };
 
-// === Tahap 4: Middleware Upload ke GCS ===
-// Middleware utama untuk upload file ke Google Cloud Storage
-export const uploadImage = (fieldName) => (req, res, next) => {
-  // Gunakan multer.single() dengan fieldName yang diberikan
-  upload.single(fieldName)(req, res, async (err) => {
-    if (err instanceof multer.MulterError) {
-      // Tangani kesalahan Multer (misalnya, ukuran file terlalu besar, tipe file salah)
-      return res.status(400).json({ message: `File upload error: ${err.message}` });
-    } else if (err) {
-      // Tangani kesalahan umum lainnya selama unggahan
-      return res.status(500).json({ message: `An unexpected error occurred during file upload: ${err.message}` });
+// ==================== MIDDLEWARE UPLOAD ====================
+export const uploadImage = (type) => async (req, res, next) => {
+  // Validasi tipe upload
+  const validTypes = ['profilePicture', 'buketImage'];
+  if (!validTypes.includes(type)) {
+    return res.status(400).json({ 
+      success: false,
+      message: 'Tipe upload tidak valid. Gunakan profilePicture atau buketImage'
+    });
+  }
+
+  // Eksekusi upload sesuai konfigurasi
+  uploadConfig[type](req, res, async (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        return res.status(400).json({ 
+          success: false,
+          message: `Error upload: ${err.message}`
+        });
+      }
+      return res.status(500).json({ 
+        success: false,
+        message: `Error: ${err.message}`
+      });
     }
 
-    if (!req.file) {
-      // Jika tidak ada file yang diunggah, lanjutkan ke middleware/handler berikutnya
-      // Ini memungkinkan pembaruan data tanpa harus mengunggah file baru
-      return next();
-    }
+    // Jika tidak ada file diupload, lanjutkan
+    if (!req.file) return next();
 
-    // Proses unggahan file ke Google Cloud Storage
     try {
-      const uniqueFileName = `${Date.now()}_${req.file.originalname.replace(/ /g, "_")}`;
-      const blob = bucket.file(uniqueFileName); // Nama file di GCS
+      // Generate nama file unik
+      const filename = `${type}/${Date.now()}_${req.file.originalname.replace(/\s+/g, '_')}`;
+      const blob = bucket.file(filename);
 
+      // Upload ke GCS
       const blobStream = blob.createWriteStream({
-        resumable: false, // Atur ke false untuk unggahan file kecil
+        resumable: false,
         metadata: {
-          contentType: req.file.mimetype // Atur tipe konten file
+          contentType: req.file.mimetype
         }
       });
 
-      // Tangani error saat streaming ke GCS
-      blobStream.on('error', (err) => {
-        console.error('Blob stream error:', err);
-        return res.status(500).json({ message: 'Error uploading file to storage.' });
+      blobStream.on('error', (error) => {
+        console.error('Error upload ke GCS:', error);
+        return res.status(500).json({
+          success: false,
+          message: 'Gagal mengupload file ke server'
+        });
       });
 
-      // Ketika unggahan selesai
       blobStream.on('finish', () => {
-        // Buat URL publik untuk file yang diunggah
-        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
-        // Tambahkan URL publik ke req.body dengan nama field yang sesuai
-        req.body[fieldName] = publicUrl;
-        next(); // Lanjutkan ke middleware/handler berikutnya
+        // Set URL publik ke request body
+        req.body[type] = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
+        next();
       });
 
-      // Akhiri stream dengan buffer file
       blobStream.end(req.file.buffer);
     } catch (error) {
-      console.error('Error in GCS upload process:', error);
-      return res.status(500).json({ message: 'Error processing file upload to Google Cloud Storage.' });
+      console.error('Error proses upload:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Terjadi kesalahan saat memproses file'
+      });
     }
   });
 };
 
-// Export semua fungsi yang dibutuhkan
-// module.exports = {
-//   uploadConfig,      // Konfigurasi upload untuk berbagai tipe file
-//   uploadToGCS,       // Middleware upload ke Google Cloud Storage
-//   deleteFileFromGCS, // Fungsi untuk menghapus file
-//   getFilename,       // Fungsi untuk generate nama file
-//   bucket,           // Instance bucket GCS
-//   getDefaultImageUrl // Fungsi untuk mendapatkan URL default
-// }; 
+// ==================== EXPORT ====================
+export default {
+  uploadImage,
+  deleteFileFromGCS,
+  getDefaultImageUrl,
+  generateFilename,
+  bucket
+};
