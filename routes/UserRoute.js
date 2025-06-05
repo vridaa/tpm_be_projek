@@ -9,7 +9,6 @@ import {
 } from "../controller/userController.js";
 import { verifyToken } from "../middleware/AuthMiddleware.js";
 import { uploadImage } from "../middleware/UploadMiddleware.js";
-import { updateUser } from '../controllers/userController.js';
 const router = express.Router();
 
 // Auth Routes
@@ -22,7 +21,7 @@ router.get('/users/:id', verifyToken, getUserById);
 router.put(
   '/users/:id',
   verifyToken,
-  uploadImage('profilePicture'), // Gunakan tipe yang sesuai
+  uploadImage('profilePicture'), // Use appropriate type
   updateUser
 );
 router.delete('/users/:id', verifyToken, deleteUser);
