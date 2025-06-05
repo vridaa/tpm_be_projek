@@ -7,6 +7,7 @@ import {
   updateUser,
   deleteUser
 } from "../controller/userController.js";
+import { verifyToken } from "../middleware/AuthMiddleware.js";
 
 const router = express.Router();
 
@@ -15,9 +16,9 @@ router.post('/register', registerUser);
 router.post('/login', loginUser);
 
 // User CRUD Routes
-router.get('/users', getAllUsers);
-router.get('/users/:id', getUserById);
-router.put('/users/:id', updateUser);
-router.delete('/users/:id', deleteUser);
+router.get('/users', verifyToken, getAllUsers);
+router.get('/users/:id', verifyToken, getUserById);
+router.put('/users/:id', verifyToken, updateUser);
+router.delete('/users/:id', verifyToken, deleteUser);
 
 export default router;

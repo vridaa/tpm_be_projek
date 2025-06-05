@@ -6,14 +6,15 @@ import {
   updateTransaksi,
   deleteTransaksi
 } from "../controller/transaksiController.js";
+import { verifyToken } from "../middleware/AuthMiddleware.js";
 
 const router = express.Router();
 
 // CRUD Routes
-router.post('/transaksi', createTransaksi);
-router.get('/transaksi', getAllTransaksi);
-router.get('/transaksi/:id', getTransaksiById);
-router.put('/transaksi/:id', updateTransaksi);
-router.delete('/transaksi/:id', deleteTransaksi);
+router.post('/transaksi', verifyToken, createTransaksi);
+router.get('/transaksi', verifyToken, getAllTransaksi);
+router.get('/transaksi/:id', verifyToken, getTransaksiById);
+router.put('/transaksi/:id', verifyToken, updateTransaksi);
+router.delete('/transaksi/:id', verifyToken, deleteTransaksi);
 
 export default router;
