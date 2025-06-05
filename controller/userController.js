@@ -112,7 +112,7 @@ export const getUserById = async (req, res) => {
   }
 };
 
-// Update User (support multipart form-data dan password hashing)
+// Update User
 export const updateUser = async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id);
@@ -121,22 +121,14 @@ export const updateUser = async (req, res) => {
     const { nama, email, alamat, password } = req.body;
     let password_hash = user.password_hash;
 
-    // Update password jika diberikan
     if (password) {
       password_hash = await bcrypt.hash(password, 10);
     }
 
-    // Update foto profil jika diberikan
+    // Gunakan foto_profil dari req.body yang disediakan oleh UploadMiddleware
     let foto_profil = user.foto_profil;
-    if (req.file) {
-      // Hapus file lama (jika ada)
-      if (foto_profil) {
-        const oldPath = path.join("public/images", foto_profil);
-        if (fs.existsSync(oldPath)) {
-          fs.unlinkSync(oldPath);
-        }
-      }
-      foto_profil = req.file.filename;
+    if (req.body.foto_profil) {
+      foto_profil = req.body.foto_profil;
     }
 
     await user.update({
@@ -168,13 +160,9 @@ export const deleteUser = async (req, res) => {
     const user = await User.findByPk(req.params.id);
     if (!user) return res.status(404).json({ message: "User tidak ditemukan" });
 
-    // Hapus foto profil jika ada
-    if (user.foto_profil) {
-      const pathToDelete = path.join("public/images", user.foto_profil);
-      if (fs.existsSync(pathToDelete)) {
-        fs.unlinkSync(pathToDelete);
-      }
-    }
+    // Logika penghapusan foto profil dari GCS belum diimplementasikan di sini.
+    // Untuk menghapus dari GCS, Anda perlu memanggil fungsi dari UploadMiddleware.
+    // Untuk saat ini, kita hanya menghapus data user dari database.
 
     await User.destroy({ where: { id: req.params.id } });
     res.status(200).json({ message: "User berhasil dihapus" });
