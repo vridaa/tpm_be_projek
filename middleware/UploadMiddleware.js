@@ -146,11 +146,11 @@ export const uploadImage = (fieldName) => (req, res, next) => {
 };
 
 // Export semua fungsi yang dibutuhkan
-module.exports = {
-  uploadConfig,      // Konfigurasi upload untuk berbagai tipe file
-  uploadToGCS,       // Middleware upload ke Google Cloud Storage
-  deleteFileFromGCS, // Fungsi untuk menghapus file
-  getFilename,       // Fungsi untuk generate nama file
-  bucket,           // Instance bucket GCS
-  getDefaultImageUrl // Fungsi untuk mendapatkan URL default
-}; 
+// module.exports = {
+//   uploadConfig,      // Konfigurasi upload untuk berbagai tipe file
+//   uploadToGCS,       // Middleware upload ke Google Cloud Storage
+//   deleteFileFromGCS, // Fungsi untuk menghapus file
+//   getFilename,       // Fungsi untuk generate nama file
+//   bucket,           // Instance bucket GCS
+//   getDefaultImageUrl // Fungsi untuk mendapatkan URL default
+// }; 
